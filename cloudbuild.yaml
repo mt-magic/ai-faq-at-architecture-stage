@@ -1,0 +1,83 @@
+steps:
+  # ===== Slack Bot Service =====
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-slack-bot"
+    args:
+      - build
+      - -t
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/slack-bot-service:${SHORT_SHA}"
+      - ./slack-bot-service
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-slack-bot"
+    waitFor: ["build-slack-bot"]
+    args:
+      - push
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/slack-bot-service:${SHORT_SHA}"
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy-slack-bot"
+    waitFor: ["push-slack-bot"]
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - slack-bot-service
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/slack-bot-service:${SHORT_SHA}
+      - --region=${_REGION}
+      - --platform=managed
+      - --no-allow-unauthenticated
+      - --service-account=slack-bot-sa@${PROJECT_ID}.iam.gserviceaccount.com
+
+  # ===== Customer API Service =====
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-customer-api"
+    args:
+      - build
+      - -t
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/customer-api-service:${SHORT_SHA}"
+      - ./customer-api-service
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-customer-api"
+    waitFor: ["build-customer-api"]
+    args:
+      - push
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/customer-api-service:${SHORT_SHA}"
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy-customer-api"
+    waitFor: ["push-customer-api"]
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - customer-api-service
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/customer-api-service:${SHORT_SHA}
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --service-account=customer-api-sa@${PROJECT_ID}.iam.gserviceaccount.com
+
+  # ===== Batch Jobs =====
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-batch-jobs"
+    args:
+      - build
+      - -t
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/batch-jobs:${SHORT_SHA}"
+      - ./batch-jobs
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-batch-jobs"
+    waitFor: ["build-batch-jobs"]
+    args:
+      - push
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/batch-jobs:${SHORT_SHA}"
+
+substitutions:
+  _REGION: asia-northeast1
+  _AR_REPO: ai-faq-repo
+
+options:
+  logging: CLOUD_LOGGING_ONLY
